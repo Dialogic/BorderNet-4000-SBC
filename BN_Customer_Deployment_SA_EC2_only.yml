@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS Cloud Formation template to launch BorderNet
+Parameters:
+  AvailabilityZone:
+    Description: select the Availability Zone to launch the Instance
+    Type: 'AWS::EC2::AvailabilityZone::Name'
+  MGMTSubnet:
+    Description: Choose the MGMT subnet to attach with the EC2 Instance
+    Type: 'AWS::EC2::Subnet::Id'
+  PublicSubnet:
+    Description: Choose the Public subnet to attach with the EC2 Instance
+    Type: 'AWS::EC2::Subnet::Id'
+  PrivateSubnet:
+    Description: Choose the Private subnet to attach with the EC2 Instance
+    Type: 'AWS::EC2::Subnet::Id'
+  SecurityGroupID:
+    Description: Select the Security Group for EC2 Instance
+    Type: 'AWS::EC2::SecurityGroup::Id'
+Mappings:
+  RegionMap:
+    us-east-1:
+      ami: ami-35fd784f
+    us-west-2:
+      ami: ami-182eac78
+    eu-west-1:
+      ami: ami-80a40df9
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - AvailabilityZone
+          - MGMTSubnet
+          - PublicSubnet
+          - PrivateSubnet
+          - SecurityGroupID
+    ParameterLabels:
+      SecurityGroupID:
+        default: SecurityGroup
+Resources:
+  Eth0:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      Description: BN-MGMT
+      GroupSet:
+        - !Ref SecurityGroupID
+      SourceDestCheck: 'true'
+      SubnetId: !Ref MGMTSubnet
+      Tags:
+        - Key: Name
+          Value: BN-MGMT
+        - Key: Interface
+          Value: eth0
+  Eth1:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      Description: BN-Public
+      GroupSet:
+        - !Ref SecurityGroupID
+      SourceDestCheck: 'true'
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: BN-Public
+        - Key: Interface
+          Value: eth1
+  Eth2:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      Description: BN-Private
+      GroupSet:
+        - !Ref SecurityGroupID
+      SourceDestCheck: 'true'
+      SubnetId: !Ref PrivateSubnet
+      Tags:
+        - Key: Name
+          Value: BN-Private
+        - Key: Interface
+          Value: eth2
+  Ec2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      InstanceType: c4.xlarge
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref Eth0
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref Eth1
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref Eth2
+          DeviceIndex: '2'
+      ImageId: !FindInMap 
+        - RegionMap
+        - !Ref 'AWS::Region'
+        - ami
+      Tags:
+        - Key: Name
+          Value: Dialogic-BorderNet
+Outputs:
+  EC2InstanceID:
+    Value: !Ref Ec2Instance
+    Description: The Instance ID of the created Ec2 Instance
